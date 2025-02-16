@@ -7,8 +7,8 @@ import { VerificationOutcome } from '@app/complycube-shared/database/verificatio
 import { Client } from '@app/database/models/client';
 import { Document } from '@app/database/models/document';
 
-@Table({ tableName: 'identity_verifications' })
-export class IdentityVerification extends BaseModel {
+@Table({ tableName: 'verifications' })
+export class Verification extends BaseModel {
   @AutoIncrement
   @PrimaryKey
   @Column

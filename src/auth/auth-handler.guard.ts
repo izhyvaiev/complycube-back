@@ -34,8 +34,8 @@ export class AuthHandlerGuard implements CanActivate {
 			throw new UnauthorizedException(error.message || error)
 		}
 
-		request.sessionId = payload.sessionId
 
+		request.sessionId = payload.sessionId
 		return true
 	}
 

@@ -7,12 +7,12 @@ import { SequelizeModule } from '@nestjs/sequelize'
 import { AuthController } from '@app/auth/auth.controller'
 import type { JwtModuleOptions } from '@nestjs/jwt'
 import { JwtModule } from '@nestjs/jwt'
-import { RefreshToken } from '@app/database/models';
+import { RefreshToken, VerificationSession } from '@app/database/models';
 
 @Module({
   imports: [
     ConfigModule,
-    SequelizeModule.forFeature([RefreshToken]),
+    SequelizeModule.forFeature([RefreshToken, VerificationSession]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService): JwtModuleOptions => {

@@ -3,7 +3,7 @@ import { AutoIncrement, BelongsTo, Column, ForeignKey, PrimaryKey, Table, HasMan
 import { DataTypes } from 'sequelize';
 import { DocumentType } from '@app/database/models/document-type';
 import { DocumentClassification } from '@app/complycube-shared/database/document-classification';
-import { IdentityVerification } from '@app/database/models/identity-verification';
+import { Verification } from '@app/database/models/verification';
 
 @Table({ tableName: 'documents' })
 export class Document extends BaseModel {
@@ -26,8 +26,8 @@ export class Document extends BaseModel {
   classification: DocumentClassification
 
   @Column
-  issuingCountry: string
+  issuingCountry: string | null
 
-  @HasMany(() => IdentityVerification)
-  identityVerifications?: IdentityVerification[]
+  @HasMany(() => Verification)
+  identityVerifications?: Verification[]
 }

@@ -1,12 +1,13 @@
-import { Body, Controller, Get, NotFoundException, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
 import { SessionId } from '@app/auth/session-id.decorator';
 import { VerificationService } from '@app/verification/verification.service';
 import { IndividualClientPayloadDto } from '@app/complycube-shared/verification/individual-client-payload.dto';
 import { ApiCreatedResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IndividualClientDto } from '@app/complycube-shared/verification/individual-client.dto';
-import { Public } from '@app/auth/public.decorator';
 import { SessionTokenDto } from '@app/complycube-shared/auth/session-token.dto';
-import { plainToInstance } from 'class-transformer';
+import { CapturePayloadDto } from '@app/complycube-shared/verification/capture-payload.dto';
+import { VerificationStatusDto } from '@app/complycube-shared/verification/verification-status.dto';
+import { fillDto } from '@app/helpers';
 
 @ApiTags('verification')
 @ApiResponse({ status: 400, description: 'Invalid request' })
@@ -36,11 +37,63 @@ export class VerificationController {
     return this.verificationService.setSessionClientData(sessionId, payload);
   }
 
-  @Public()
   @Post('session/token')
   @ApiCreatedResponse({ type: SessionTokenDto })
   async createSessionToken(@SessionId() sessionId: string): Promise<SessionTokenDto> {
     const token = await this.verificationService.generateSessionToken(sessionId)
-    return plainToInstance(SessionTokenDto, token)
+    return fillDto(SessionTokenDto, { token, sessionId })
+  }
+
+  @Post('capture')
+  @ApiCreatedResponse({ type: VerificationStatusDto, isArray: true })
+  async verifyCapturedData(
+    @SessionId() sessionId: string,
+    @Body() payload: CapturePayloadDto
+  ): Promise<VerificationStatusDto[]> {
+    const verifications = await this.verificationService
+      .initVerificationOfCapture(sessionId, payload);
+    return verifications.map(verification => fillDto(
+      VerificationStatusDto,
+      verification.get({ plain: true })
+    ))
+  }
+
+  @Get('capture')
+  @ApiCreatedResponse({ type: VerificationStatusDto, isArray: true })
+  async getCaptures(@SessionId() sessionId: string,): Promise<VerificationStatusDto[]> {
+    const verifications = await this.verificationService
+      .getVerificationsBySessionId(sessionId);
+    return verifications.map(verification => fillDto(
+      VerificationStatusDto,
+      verification.get({ plain: true })
+    ))
+  }
+
+  @Get('capture/:id')
+  @ApiCreatedResponse({ type: VerificationStatusDto })
+  async getCapture(
+    @SessionId() sessionId: string,
+    @Param('id', ParseIntPipe) id: number
+  ): Promise<VerificationStatusDto> {
+    const verification = await this.verificationService
+      .getVerification(sessionId, id);
+    return fillDto(
+      VerificationStatusDto,
+      verification.get({ plain: true })
+    )
+  }
+
+  @Put('capture/:id/check')
+  @ApiCreatedResponse({ type: VerificationStatusDto })
+  async checkCapture(
+    @SessionId() sessionId: string,
+    @Param('id', ParseIntPipe) id: number
+  ): Promise<VerificationStatusDto> {
+    const verification = await this.verificationService
+      .checkVerificationStatus(sessionId, id);
+    return fillDto(
+      VerificationStatusDto,
+      verification.get({ plain: true })
+    )
   }
 }

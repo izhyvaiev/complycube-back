@@ -6,14 +6,14 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      sessionId?: string
+  declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
+    namespace Express {
+      interface Request {
+        sessionId?: string
+      }
     }
   }
-}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true })

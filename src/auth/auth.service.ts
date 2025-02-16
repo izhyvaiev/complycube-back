@@ -1,17 +1,17 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JWTPayload } from '@app/auth/types';
 import { ConfigService } from '@nestjs/config';
 import * as dayjs from 'dayjs'
 import { SessionResponseDto } from '@app/complycube-shared/auth/session-response.dto';
-import { plainToInstance } from 'class-transformer';
 import { randomUUID } from 'crypto'
 import { InjectModel } from '@nestjs/sequelize';
-import { RefreshToken } from '@app/database/models';
+import { Client, RefreshToken, VerificationSession } from '@app/database/models';
 import { ModelCtor } from 'sequelize-typescript';
 import { RefreshTokenDto } from '@app/complycube-shared/auth/refresh-token.dto';
 import { Op } from 'sequelize';
 import { Transaction } from '@app/database/decorators/transaction.decorator';
+import { fillDto } from '@app/helpers';
 
 @Injectable()
 export class AuthService {
@@ -19,10 +19,27 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     @InjectModel(RefreshToken) private readonly refreshTokenModel: ModelCtor<RefreshToken>,
+    @InjectModel(VerificationSession) private readonly verificationSessionModel: ModelCtor<VerificationSession>,
   ) {}
 
   public async generateSession(): Promise<SessionResponseDto> {
     return this.generateAccessToken(randomUUID())
+  }
+
+  public async continueSession(sessionId: string, email: string): Promise<SessionResponseDto> {
+    const session = await this.verificationSessionModel.findOne({
+      where: { uuid: sessionId },
+      include: {
+        model: Client,
+        as: 'client',
+        required: true,
+        where: { email }
+      }
+    })
+    if (!session) {
+      throw new UnauthorizedException('Session not found')
+    }
+    return this.generateAccessToken(session.uuid)
   }
 
   @Transaction()
@@ -48,12 +65,12 @@ export class AuthService {
 
     const refreshToken = await this.generateRefreshToken(sessionId)
 
-    return plainToInstance(SessionResponseDto, {
+    return fillDto(SessionResponseDto, {
       access_token: this.jwtService.sign(payload, {
         expiresIn,
       }),
       token_type: 'bearer',
-      expires_in: expiresIn,
+      expires_at: dayjs().add(expiresIn, 'seconds').toISOString(),
       refresh_token: refreshToken.token,
       refresh_token_expires_at: refreshToken.expiresAt.toISOString(),
     })

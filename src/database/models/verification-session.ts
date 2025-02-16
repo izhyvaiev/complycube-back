@@ -2,7 +2,7 @@ import { AutoIncrement, BelongsTo, Column, ForeignKey, HasMany, PrimaryKey, Tabl
 import { BaseModel } from '@app/database/base-model';
 import { DataTypes } from 'sequelize';
 import { Client } from '@app/database/models/client';
-import { IdentityVerification } from '@app/database/models/identity-verification';
+import { Verification } from '@app/database/models/verification';
 
 @Table({ tableName: 'verification_sessions' })
 export class VerificationSession extends BaseModel {
@@ -21,6 +21,6 @@ export class VerificationSession extends BaseModel {
   @BelongsTo(() => Client)
   client?: Client | null
 
-  @HasMany(() => IdentityVerification)
-  identityVerifications?: IdentityVerification[]
+  @HasMany(() => Verification)
+  verifications?: Verification[]
 }
