@@ -14,10 +14,10 @@ RUN npm install
 COPY . .
 
 # Setup database structure
-RUN npm run migrations:up
+#RUN npx sequelize-cli db:migrate
 
 # Expose port
-EXPOSE 3000
+EXPOSE 3001
 
 # Start the application
 CMD ["npm", "start"]

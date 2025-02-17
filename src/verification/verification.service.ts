@@ -12,22 +12,22 @@ import {
   Document,
   Verification,
   DocumentType,
-} from '@app/database/models';
-import { BelongsTo, Column, ForeignKey, ModelCtor } from 'sequelize-typescript';
-import { IndividualClientDto } from '@app/complycube-shared/verification/individual-client.dto';
-import { IndividualClientPayloadDto } from '@app/complycube-shared/verification/individual-client-payload.dto';
-import { Transaction } from '@app/database/decorators/transaction.decorator';
+} from '../database/models';
+import { ModelCtor } from 'sequelize-typescript';
+import { IndividualClientDto } from '../complycube-shared/verification/individual-client.dto';
+import { IndividualClientPayloadDto } from '../complycube-shared/verification/individual-client-payload.dto';
+import { Transaction } from '../database/decorators/transaction.decorator';
 import { isNil, omitBy, pick } from 'lodash';
 import { ConfigService } from '@nestjs/config';
 import { ComplyCube } from '@complycube/api';
-import { ClientType } from '@app/complycube-shared/database/client-type';
+import { ClientType } from '../complycube-shared/database/client-type';
 import * as dayjs from 'dayjs';
 import { ClientRequest } from '@complycube/api/dist/resources/Clients';
 import { Token } from '@complycube/api/dist/resources/Tokens';
-import { CapturePayloadDto } from '@app/complycube-shared/verification/capture-payload.dto';
-import { DocumentClassification } from '@app/complycube-shared/database/document-classification';
-import { VerificationType } from '@app/complycube-shared/database/verification-type';
-import { fillDto } from '@app/helpers';
+import { CapturePayloadDto } from '../complycube-shared/verification/capture-payload.dto';
+import { DocumentClassification } from '../complycube-shared/database/document-classification';
+import { VerificationType } from '../complycube-shared/database/verification-type';
+import { fillDto } from '../helpers';
 
 @Injectable()
 export class VerificationService {
@@ -41,7 +41,35 @@ export class VerificationService {
       @InjectModel(Verification) private readonly verificationModel: ModelCtor<Verification>,
       private readonly configService: ConfigService,
     ) {
-      this.complycube = new ComplyCube(this.configService.get('complyCube'));
+      this.complycube = new ComplyCube({ apiKey: this.configService.get('complyCube.apiKey') });
+    }
+
+    async onModuleInit() {
+      const webhookUrl = this.configService.get('complyCube.webhookEndpoint')
+      // TODO check all pages of webhooks
+      const webhooks = (await this.complycube.webhook.list() || [])
+      let hasWebhook = false;
+      for (const webhook of webhooks) {
+        if (webhook.url === webhookUrl) {
+          if (!webhook.enabled) {
+            await this.complycube.webhook.update(webhook.id, {
+              enabled: true,
+            })
+            hasWebhook = true;
+            break;
+          }
+        }
+      }
+      if (!hasWebhook) {
+        await this.complycube.webhook.create({
+          url: webhookUrl,
+          enabled: true,
+          events: [
+            "check.completed",
+            "check.failed"
+          ]
+        })
+      }
     }
 
     async getSessionClient(sessionId: string): Promise<IndividualClientDto | null> {
@@ -62,6 +90,12 @@ export class VerificationService {
     if (!verificationSession) return []
     return this.verificationModel.findAll({
       where: { verificationSessionId: verificationSession.id }
+    });
+  }
+
+  async getOneWithSession(externalId: string): Promise<Verification> {
+    return this.verificationModel.findOne({
+      where: { externalId }, include: ['verificationSession']
     });
   }
 

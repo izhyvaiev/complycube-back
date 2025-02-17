@@ -8,7 +8,9 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "prestart": "npx sequelize-cli db:migrate",
     "start": "nest start",
+    "prestart:dev": "npx sequelize-cli db:migrate",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
@@ -80,9 +82,14 @@
       "json",
       "ts"
     ],
+    "moduleNameMapper": {
+      "^@app/(.*)$": "<rootDir>/$1",
+      "@app$": "<rootDir>"
+    },
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
+      "preset": "ts-jest",
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
@@ -92,8 +99,8 @@
     "testEnvironment": "node"
   },
   "_moduleAliases": {
-    "@app": "./dist",
-    "@root": "./dist"
+    "@app": "./src",
+    "@root": "./src"
   },
   "lint-staged": {
     "*.@(j|t)s": [

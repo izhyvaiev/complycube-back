@@ -1,6 +1,7 @@
 export interface IConfig {
     complyCube: {
       apiKey: string;
+      webhookEndpoint: string;
     },
   jwt: {
     secret: string;

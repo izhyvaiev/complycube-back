@@ -13,6 +13,7 @@ export default () => {
   const config: IConfig ={
     complyCube: {
       apiKey: process.env.COMPLYCUBE_API_KEY,
+      webhookEndpoint: process.env.WEBHOOK_ENDPOINT,
     },
     jwt: {
       secret: process.env.JWT_SECRET,

@@ -1,13 +1,18 @@
-import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Put,
+  Sse, MessageEvent } from '@nestjs/common';
 import { SessionId } from '@app/auth/session-id.decorator';
 import { VerificationService } from '@app/verification/verification.service';
 import { IndividualClientPayloadDto } from '@app/complycube-shared/verification/individual-client-payload.dto';
-import { ApiCreatedResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiExcludeEndpoint, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IndividualClientDto } from '@app/complycube-shared/verification/individual-client.dto';
 import { SessionTokenDto } from '@app/complycube-shared/auth/session-token.dto';
 import { CapturePayloadDto } from '@app/complycube-shared/verification/capture-payload.dto';
 import { VerificationStatusDto } from '@app/complycube-shared/verification/verification-status.dto';
 import { fillDto } from '@app/helpers';
+import { Observable, Subject } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { Public } from '@app/auth/public.decorator';
+import { Webhook } from '@complycube/api';
 
 @ApiTags('verification')
 @ApiResponse({ status: 400, description: 'Invalid request' })
@@ -15,6 +20,7 @@ import { fillDto } from '@app/helpers';
 @ApiResponse({ status: 500, description: 'Internal server error' })
 @Controller('verification')
 export class VerificationController {
+  private eventSubjects: Map<string, Subject<VerificationStatusDto>> = new Map()
   constructor(private readonly verificationService: VerificationService) {}
 
   @ApiResponse({ type: IndividualClientDto })
@@ -54,7 +60,10 @@ export class VerificationController {
       .initVerificationOfCapture(sessionId, payload);
     return verifications.map(verification => fillDto(
       VerificationStatusDto,
-      verification.get({ plain: true })
+      {
+        ...verification.get({ plain: true }),
+        sessionId,
+      }
     ))
   }
 
@@ -65,7 +74,10 @@ export class VerificationController {
       .getVerificationsBySessionId(sessionId);
     return verifications.map(verification => fillDto(
       VerificationStatusDto,
-      verification.get({ plain: true })
+      {
+        ...verification.get({ plain: true }),
+        sessionId,
+      }
     ))
   }
 
@@ -79,7 +91,10 @@ export class VerificationController {
       .getVerification(sessionId, id);
     return fillDto(
       VerificationStatusDto,
-      verification.get({ plain: true })
+      {
+        ...verification.get({ plain: true }),
+        sessionId
+      }
     )
   }
 
@@ -93,7 +108,46 @@ export class VerificationController {
       .checkVerificationStatus(sessionId, id);
     return fillDto(
       VerificationStatusDto,
-      verification.get({ plain: true })
+      {
+        ...verification.get({ plain: true }),
+        sessionId
+      }
     )
+  }
+
+  @Sse('sse')
+  sse(@SessionId() sessionId: string,): Observable<MessageEvent> {
+    if (!this.eventSubjects.has(sessionId)) {
+      this.eventSubjects.set(sessionId, new Subject<VerificationStatusDto>())
+    }
+    return this.eventSubjects.get(sessionId).pipe(
+      map((data) => ({
+        data,
+        type: 'update',
+      })),
+    );
+  }
+
+  @ApiExcludeEndpoint()
+  @Public()
+  @Post('webhook')
+  async processWebhook(@Body() payload: {
+    id: string,
+    type: string,
+    payload: {
+      id: string
+    }
+  }): Promise<void> {
+    const verification = await this.verificationService
+      .getOneWithSession(payload.payload.id);
+    if (verification) {
+      const sessionId = verification.verificationSession!.uuid
+      const verificationStatus = await this.checkCapture(
+        sessionId,
+        verification.id
+      )
+      const subject = this.eventSubjects.get(sessionId)
+      subject?.next(verificationStatus)
+    }
   }
 }

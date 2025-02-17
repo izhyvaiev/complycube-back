@@ -120,7 +120,7 @@ module.exports = {
           external_id TEXT,
           document_type_id BIGINT NOT NULL REFERENCES document_types(id),
           classification document_classification NOT NULL,
-          issuing_country VARCHAR(2) NOT NULL,
+          issuing_country VARCHAR(2),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE,
           deleted_at TIMESTAMP WITH TIME ZONE
