@@ -1,0 +1,3 @@
+[submodule "src/complycube-shared"]
+	path = src/complycube-shared
+	url = git@github.com:izhyvaiev/complycube-shared.git
